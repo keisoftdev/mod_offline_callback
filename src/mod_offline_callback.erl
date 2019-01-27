@@ -27,7 +27,6 @@
 
 -include("logger.hrl").
 -include("xmpp.hrl").
--include("adhoc.hrl").
 
 -include("mod_offline_callback.hrl").
 
