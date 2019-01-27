@@ -97,7 +97,7 @@ stop(Host) ->
          Worker = backend_worker({Host, url}),
          supervisor:terminate_child(ejabberd_gen_mod_sup, Worker),
          supervisor:delete_child(ejabberd_gen_mod_sup, Worker)
-     end || #backend_config{type=Type} <- backend_configs(Host)],
+     end || #gateway_config{type=Type} <- backend_configs(Host)],
     ok.
 
 depends(_, _) ->
