@@ -37,16 +37,12 @@
 % types
 %
 
--record(url_config,
-        {gateway = <<"">> :: binary()}).
-
--type url_config() :: #url_config{}.
-
--record(backend_config,
+-record(gateway_config,
         {type :: backend_type(),
-         config :: url_config()}).
+         gateway = <<"">> :: binary()}).
 
--type backend_config() :: #backend_config{}.
+-type gateway_config() :: #gateway_config{}.
+
 
 %
 % dispatch to workers
@@ -61,7 +57,6 @@ stanza_to_payload(_) -> [].
 
 dispatch(#jid{luser = LUser, lserver = LServer},
          Payload) ->
-    DisableArgs = {LUser, Timestamp},
     gen_server:cast(backend_worker(BackendId),
                     {dispatch, LUser, Payload, LUser}),
     ok.
@@ -82,17 +77,17 @@ offline_message({_, #message{to = To} = Stanza} = Acc) ->
 % ejabberd gen_mod callbacks and configuration
 %
 
--spec(start(Host :: binary(), Opts :: [any()]) -> any()).
+-spec start(binary(), gen_mod:opts()) -> ok.
 
 start(Host, Opts) ->
     ?DEBUG("mod_offline_callback:start(~p, ~p), pid=~p", [Host, Opts, self()]),
     ok = ejabberd_hooks:add(offline_message_hook, Host, ?MODULE, offline_message, ?OFFLINE_HOOK_PRIO),
 
-    Results = [start_worker(Host, B) || B <- proplists:get_value(backends, Opts)],
+    Results = [start_worker(Host, B) || B <- proplists:get_value(gateways, Opts)],
     ?INFO_MSG("++++++++ mod_offline_callback:start(~p, ~p): workers ~p", [Host, Opts, Results]),
     ok.
 
--spec(stop(Host :: binary()) -> any()).
+-spec stop(binary()) -> ok.
 
 stop(Host) ->
     ?DEBUG("mod_offline_callback:stop(~p), pid=~p", [Host, self()]),
@@ -108,28 +103,20 @@ stop(Host) ->
 depends(_, _) ->
     [{mod_offline, hard}].
 
-mod_opt_type(backends) -> fun ?MODULE:parse_backends/1;
-mod_opt_type(_) -> [backends].
+mod_opt_type(gateways) -> fun ?MODULE:parse_gateways/1;
+mod_opt_type(_) -> [gateways].
 
-parse_backends(Plists) ->
-    [parse_backend(Plist) || Plist <- Plists].
+parse_gateways(Plists) ->
+    [parse_gateway(Plist) || Plist <- Plists].
 
-parse_backend(Opts) ->
+parse_gateway(Opts) ->
     RawType = proplists:get_value(type, Opts),
     Type =
         case lists:member(RawType, [url]) of
             true -> RawType
         end,
-    Gateway = proplists:get_value(gateway, Opts),
-
-    #backend_config{
-       type = Type,
-       config =
-           case Type of
-               url ->
-                   #url_config{gateway = Gateway}
-           end
-      }.
+    GatewayUrl = proplists:get_value(gateway, Opts),
+    #gateway_config{type = Type, gateway = GatewayUrl}.
 
 %
 % workers
@@ -143,22 +130,16 @@ backend_configs(Host) ->
     gen_mod:get_module_opt(Host, ?MODULE, backends,
                            fun(O) when is_list(O) -> O end, []).
 
--spec(start_worker(Host :: binary(), Backend :: backend_config()) -> ok).
+-spec(start_worker(Host :: binary(), Gateway :: gateway_config()) -> ok).
 
-start_worker(Host, #backend_config{type = Type, config = TypeConfig}) ->
+start_worker(Host, #gateway_config{type = Type, gateway = GatewayUrl }) ->
     Module = proplists:get_value(Type, [{url, ?MODULE_URL}]),
     Worker = backend_worker({Host, Type}),
-    BackendSpec = 
-    case Type of
-        url ->
-                  {Worker,
+    BackendSpec = {Worker,
                    {gen_server, start_link,
                     [{local, Worker}, Module,
-                     %% TODO: mb i should send one record like BackendConfig#backend_config.config and parse it in each module
-                     [TypeConfig#url_config.gateway], []]},
-                   permanent, 1000, worker, [?MODULE]}
-    end,
-
+                     [GatewayUrl], []]},
+                   permanent, 1000, worker, [?MODULE]},
     supervisor:start_child(ejabberd_gen_mod_sup, BackendSpec).
 
 %
