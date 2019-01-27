@@ -77,7 +77,7 @@ offline_message({_, #message{to = To} = Stanza} = Acc) ->
 % ejabberd gen_mod callbacks and configuration
 %
 
--spec start(binary(), gen_mod:opts()) -> ok.
+-spec(start(Host :: binary(), Opts :: [any()]) -> any()).
 
 start(Host, Opts) ->
     ?DEBUG("mod_offline_callback:start(~p, ~p), pid=~p", [Host, Opts, self()]),
@@ -127,7 +127,7 @@ parse_gateway(Opts) ->
 backend_worker({Host, Type}) -> gen_mod:get_module_proc(Host, Type).
 
 backend_configs(Host) ->
-    gen_mod:get_module_opt(Host, ?MODULE, backends,
+    gen_mod:get_module_opt(Host, ?MODULE, gateways,
                            fun(O) when is_list(O) -> O end, []).
 
 -spec(start_worker(Host :: binary(), Gateway :: gateway_config()) -> ok).
