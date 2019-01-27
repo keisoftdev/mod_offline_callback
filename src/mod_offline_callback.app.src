@@ -1,0 +1,11 @@
+{application, mod_offline_callback,
+ [{description, "mod_offline_callback"},
+  {vsn, "git"},
+  {modules, []},
+  {registered, []},
+  {applications, [kernel,
+                  stdlib,
+                  sasl,
+                  inets,
+                  ssl]}
+ ]}.

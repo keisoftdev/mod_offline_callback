@@ -1,0 +1,5 @@
+author: "Keisoft <harrywatson1008@gmail.com>"
+category: "service"
+summary: "APNS/FCM Push Notifications for Offline Messages"
+home: "https://github.com/proger/mod_pushoff"
+url: "https://github.com/proger/mod_pushoff"
