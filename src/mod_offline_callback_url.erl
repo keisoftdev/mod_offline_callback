@@ -38,10 +38,20 @@
          retry_list :: [any()],
          pending_timer :: reference(),
          retry_timer :: reference(),
-         pending_timestamp :: erlang:timestamp(),
-         retry_timestamp :: erlang:timestamp(),
+         pending_timestamp = erlang:timestamp() :: erlang:timestamp(),
+         retry_timestamp = erlang:timestamp() :: erlang:timestamp(),
          gateway :: string()}).
 
+%%====================================================================
+%% gen_server callbacks
+%%====================================================================
+%%--------------------------------------------------------------------
+%% Function: init(Args) -> {ok, State} |
+%%                         {ok, State, Timeout} |
+%%                         ignore               |
+%%                         {stop, Reason}
+%% Description: Initiates the server
+%%--------------------------------------------------------------------
 init([Gateway]) ->
     ?INFO_MSG("+++++++++ mod_pushoff_fcm:init, gateway <~p>", [Gateway]),
     inets:start(),
@@ -50,9 +60,17 @@ init([Gateway]) ->
     {ok, #state{send_queue = queue:new(),
                 retry_list = [],
                 pending_timer = make_ref(),
-                retry_timer = make_ref(),
+                retry_timer = make_ref(),       
+                pending_timestamp = erlang:timestamp(),
+                retry_timestamp = erlang:timestamp(),
                 gateway = mod_offline_callback_utils:force_string(Gateway)}}.
 
+%%--------------------------------------------------------------------
+%% Function: handle_info(Info, State) -> {noreply, State} |
+%%                                       {noreply, State, Timeout} |
+%%                                       {stop, Reason, State}
+%% Description: Handling all non call/cast messages
+%%--------------------------------------------------------------------
 handle_info({retry, StoredTimestamp},
             #state{send_queue = SendQ,
                    retry_list = RetryList,
@@ -131,7 +149,23 @@ handle_info(Info, State) ->
     ?DEBUG("+++++++ mod_offline_callback_url received unexpected signal ~p", [Info]),
     {noreply, State}.
 
+%%--------------------------------------------------------------------
+%% Function: handle_call(Request, From, State) -> {reply, Reply, State} |
+%%                                      {reply, Reply, State, Timeout} |
+%%                                      {noreply, State} |
+%%                                      {noreply, State, Timeout} |
+%%                                      {stop, Reason, Reply, State} |
+%%                                      {stop, Reason, State}
+%% Description: Handling call messages
+%%--------------------------------------------------------------------
 handle_call(_Req, _From, State) -> {reply, {error, badarg}, State}.
+
+%%--------------------------------------------------------------------
+%% Function: handle_cast(Msg, State) -> {noreply, State} |
+%%                                      {noreply, State, Timeout} |
+%%                                      {stop, Reason, State}
+%% Description: Handling cast messages
+%%--------------------------------------------------------------------
 
 handle_cast({dispatch, UserBare, Payload, ToId},
             #state{send_queue = SendQ,
