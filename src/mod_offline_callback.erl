@@ -23,8 +23,7 @@
 
 -compile(export_all).
 -export([start/2, stop/1, depends/2, mod_opt_type/1, parse_backends/1,
-         offline_message/1, adhoc_local_commands/4, remove_user/2,
-         health/0]).
+         offline_message/1, health/0]).
 
 -include("logger.hrl").
 -include("xmpp.hrl").
@@ -32,7 +31,7 @@
 
 -include("mod_offline_callback.hrl").
 
--define(MODULE_FCM, mod_offline_callback_url).
+-define(MODULE_URL, mod_offline_callback_url).
 -define(OFFLINE_HOOK_PRIO, 1). % must fire before mod_offline (which has 50)
 
 %
@@ -59,7 +58,7 @@
 stanza_to_payload(#message{id = Id}) -> [{id, Id}];
 stanza_to_payload(_) -> [].
 
--spec(dispatch(jid()) -> ok).
+-spec(dispatch(jid(), [{atom(), any()}]) -> ok).
 
 dispatch(#jid{luser = LUser, lserver = LServer},
          Payload) ->
@@ -77,44 +76,7 @@ dispatch(#jid{luser = LUser, lserver = LServer},
 
 offline_message({_, #message{to = To} = Stanza} = Acc) ->
     Payload = stanza_to_payload(Stanza),
-    dispatch(To)
-    Acc.
-
-
--spec adhoc_local_commands(Acc :: empty | adhoc_command(),
-                           From :: jid(),
-                           To :: jid(),
-                           Request :: adhoc_command()) ->
-                                  adhoc_command() |
-                                  {error, stanza_error()}.
-
-adhoc_local_commands(Acc, From, To, #adhoc_command{node = Command, action = execute, xdata = XData} = Req) ->
-    Host = To#jid.lserver,
-    Access = gen_mod:get_module_opt(Host, ?MODULE, access_backends,
-                                    fun(A) when is_atom(A) -> A end, all),
-    Result = case acl:match_rule(Host, Access, From) of
-        deny -> {error, xmpp:err_forbidden()};
-        allow -> adhoc_perform_action(Command, From, XData)
-    end,
-
-    case Result of
-        unknown -> Acc;
-        {error, Error} -> {error, Error};
-
-        {registered, ok} ->
-            xmpp_util:make_adhoc_response(Req, #adhoc_command{status = completed});
-
-        {unregistered, Regs} ->
-            X = xmpp_util:set_xdata_field(#xdata_field{var = <<"removed-registrations">>,
-                                                       values = [T || #pushoff_registration{token=T} <- Regs]}, #xdata{}),
-            xmpp_util:make_adhoc_response(Req, #adhoc_command{status = completed, xdata = X});
-
-        {registrations, Regs} ->
-            X = xmpp_util:set_xdata_field(#xdata_field{var = <<"registrations">>,
-                                                       values = [T || #pushoff_registration{token=T} <- Regs]}, #xdata{}),
-            xmpp_util:make_adhoc_response(Req, #adhoc_command{status = completed, xdata = X})
-    end;
-adhoc_local_commands(Acc, _From, _To, _Request) ->
+    dispatch(To, Payload),
     Acc.
 
 %
@@ -126,7 +88,6 @@ adhoc_local_commands(Acc, _From, _To, _Request) ->
 start(Host, Opts) ->
     ?DEBUG("mod_offline_callback:start(~p, ~p), pid=~p", [Host, Opts, self()]),
     ok = ejabberd_hooks:add(offline_message_hook, Host, ?MODULE, offline_message, ?OFFLINE_HOOK_PRIO),
-    ok = ejabberd_hooks:add(adhoc_local_commands, Host, ?MODULE, adhoc_local_commands, 75),
 
     Results = [start_worker(Host, B) || B <- proplists:get_value(backends, Opts)],
     ?INFO_MSG("++++++++ mod_offline_callback:start(~p, ~p): workers ~p", [Host, Opts, Results]),
@@ -136,7 +97,6 @@ start(Host, Opts) ->
 
 stop(Host) ->
     ?DEBUG("mod_offline_callback:stop(~p), pid=~p", [Host, self()]),
-    ok = ejabberd_hooks:delete(adhoc_local_commands, Host, ?MODULE, adhoc_local_commands, 75),
     ok = ejabberd_hooks:delete(offline_message_hook, Host, ?MODULE, offline_message, ?OFFLINE_HOOK_PRIO),
 
     [begin
@@ -208,5 +168,4 @@ start_worker(Host, #backend_config{type = Type, config = TypeConfig}) ->
 
 health() ->
     Hosts = ejabberd_config:get_myhosts(),
-    [{offline_message_hook, [ets:lookup(hooks, {offline_message_hook, H}) || H <- Hosts]},
-     {adhoc_local_commands, [ets:lookup(hooks, {adhoc_local_commands, H}) || H <- Hosts]}].
+    [{offline_message_hook, [ets:lookup(hooks, {offline_message_hook, H}) || H <- Hosts]}].
