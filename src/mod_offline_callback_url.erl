@@ -97,7 +97,7 @@ handle_info(send, #state{send_queue = SendQ,
                                   retry_timestamp = Timestamp};
                 {ok, {{_, 200, _}, _, ResponseBody}} ->
                       case parse_response(ResponseBody) of
-                          ok -> ok;
+                          ok -> ok
                         %   _ -> mod_pushoff_mnesia:unregister_client(DisableArgs)
                       end,
                       Timestamp = erlang:timestamp(),
@@ -176,6 +176,5 @@ parse_response(ResponseBody) ->
     case proplists:get_value(<<"success">>, JsonData) of
         1 ->
             ok;
-        0 ->
-            other;
+        _ -> other
     end.

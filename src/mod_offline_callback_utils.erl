@@ -16,7 +16,7 @@
 %%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 %%%
 
--module(mod_offline_callbck_utils).
+-module(mod_offline_callback_utils).
 
 -author('harrywatson1008@gmail.com').
 

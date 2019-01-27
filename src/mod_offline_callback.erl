@@ -22,7 +22,7 @@
 -behaviour(gen_mod).
 
 -compile(export_all).
--export([start/2, stop/1, depends/2, mod_opt_type/1, parse_backends/1,
+-export([start/2, stop/1, depends/2, mod_opt_type/1, parse_gateways/1,
          offline_message/1, health/0]).
 
 -include("logger.hrl").
@@ -57,7 +57,7 @@ stanza_to_payload(_) -> [].
 
 dispatch(#jid{luser = LUser, lserver = LServer},
          Payload) ->
-    gen_server:cast(backend_worker(BackendId),
+    gen_server:cast(backend_worker( {LServer, url}),
                     {dispatch, LUser, Payload, LUser}),
     ok.
 
@@ -94,7 +94,7 @@ stop(Host) ->
     ok = ejabberd_hooks:delete(offline_message_hook, Host, ?MODULE, offline_message, ?OFFLINE_HOOK_PRIO),
 
     [begin
-         Worker = backend_worker({Host, Type}),
+         Worker = backend_worker({Host, url}),
          supervisor:terminate_child(ejabberd_gen_mod_sup, Worker),
          supervisor:delete_child(ejabberd_gen_mod_sup, Worker)
      end || #backend_config{type=Type} <- backend_configs(Host)],
