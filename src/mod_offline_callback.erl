@@ -133,14 +133,23 @@ backend_configs(Host) ->
 -spec(start_worker(Host :: binary(), Gateway :: gateway_config()) -> ok).
 
 start_worker(Host, #gateway_config{type = Type, gateway = GatewayUrl }) ->
-    Module = proplists:get_value(Type, [{url, ?MODULE_URL}]),
-    Worker = backend_worker({Host, Type}),
+    Worker = gen_mod:get_module_proc(Host, ?MODULE),
     BackendSpec = {Worker,
                    {gen_server, start_link,
-                    [{local, Worker}, Module,
+                    [{local, Worker}, ?MODULE_URL,
                      [GatewayUrl], []]},
                    permanent, 1000, worker, [?MODULE]},
     supervisor:start_child(ejabberd_gen_mod_sup, BackendSpec).
+
+% start_worker(Host, #gateway_config{type = Type, gateway = GatewayUrl }) ->
+%     Module = proplists:get_value(Type, [{url, ?MODULE_URL}]),
+%     Worker = backend_worker({Host, Type}),
+%     BackendSpec = {Worker,
+%                    {gen_server, start_link,
+%                     [{local, Worker}, Module,
+%                      [GatewayUrl], []]},
+%                    permanent, 1000, worker, [?MODULE]},
+%     supervisor:start_child(ejabberd_gen_mod_sup, BackendSpec).
 
 %
 % operations

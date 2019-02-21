@@ -53,7 +53,7 @@
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([Gateway]) ->
-    ?INFO_MSG("+++++++++ mod_pushoff_fcm:init, gateway <~p>", [Gateway]),
+    ?INFO_MSG("+++++++++ mod_offline_callback_url:init, gateway <~p>", [Gateway]),
     inets:start(),
     crypto:start(),
     ssl:start(),
